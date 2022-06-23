@@ -1,10 +1,9 @@
-use std::fmt::{Display, Formatter, write};
 use std::str::Chars;
 use image::{DynamicImage, GenericImageView, Pixel};
 
 type Matrix = Vec<Vec<f64>>;
 
-pub fn find_distance(mut hash1: Chars, mut hash2: Chars) -> i32 {
+pub fn find_distance(hash1: Chars, hash2: Chars) -> i32 {
     hash1.zip(hash2).fold(0,
                           |acc, x|
                               if x.0 != x.1
