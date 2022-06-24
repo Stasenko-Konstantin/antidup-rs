@@ -1,7 +1,5 @@
 #[allow(dead_code)]
-
 use std::f64::consts::PI;
-use std::intrinsics::{cosf64, sqrtf64};
 use std::ops::Add;
 use std::str::Chars;
 use image::{DynamicImage, GenericImageView, Pixel};
@@ -16,13 +14,13 @@ struct DctPoint<'a> {
 }
 
 impl DctPoint<'_> {
-    unsafe fn calculate(self: &Self, image_data: &Matrix, x: i64, y: i64) -> f64 {
+    fn calculate(self: &Self, image_data: &Matrix, x: i64, y: i64) -> f64 {
         let mut sum = 0.;
         for i in 0..self.x_max {
             for j in 0..self.y_max {
-                let image_value = image_data[i as usize][j as  usize];
-                let fst_cosine = cosf64(((1 + (2 * i)) * x) as f64) * PI / (2. * self.x_max as f64);
-                let snd_cosine = cosf64(((1 + (2 * j)) * x) as f64) * PI / (2. * self.y_max as f64);
+                let image_value = image_data[i as usize][j as usize];
+                let fst_cosine = (((1 + (2 * i)) * x) as f64).cos() * PI / (2. * self.x_max as f64);
+                let snd_cosine = (((1 + (2 * j)) * x) as f64).cos() * PI / (2. * self.y_max as f64);
                 sum += image_value * fst_cosine * snd_cosine;
             }
         }
@@ -50,15 +48,16 @@ pub fn find_distance(hash1: Chars, hash2: Chars) -> i32 {
     )
 }
 
-pub unsafe fn find_hash(img: String) -> String {
+pub fn find_hash(img: String) -> String {
     let size = 32;
-    let img = image::open(img).unwrap()
-        .resize(size, size, image::imageops::Lanczos3)
+    let mut img = image::open(img).unwrap()
+        .resize_to_fill(size, size, image::imageops::Lanczos3)
         .grayscale();
-    let dct_matrix = find_dct_matrix(find_image_matrix(img));
-    let small_dct_matrix = reduce_matrix(dct_matrix, 5);
-    let dct_mean_value = calculate_mean_value(&small_dct_matrix);
-    build_hash(small_dct_matrix, dct_mean_value)
+    let image_matrix = find_image_matrix(img);
+    let small_matrix = reduce_matrix(image_matrix, 8);
+    let dct_matrix = find_dct_matrix(small_matrix); // !!!
+    let dct_mean_value = calculate_mean_value(&dct_matrix);
+    build_hash(dct_matrix, dct_mean_value) // !!!
 }
 
 fn find_image_matrix(img: DynamicImage) -> Matrix {
@@ -77,14 +76,14 @@ fn find_xy_value(img: DynamicImage, x: u32, y: u32) -> f64 {
     img.get_pixel(x, y).to_rgba().0[2] as f64
 }
 
-unsafe fn find_dct_matrix(matrix: Matrix) -> Matrix {
+fn find_dct_matrix(matrix: Matrix) -> Matrix {
     let x_max = matrix.len();
     let y_max = matrix[0].len();
     let dct_point = &DctPoint {
         x_max: x_max as i64,
         y_max: y_max as i64,
-        x_scales: &mut [1. / sqrtf64(x_max as f64), sqrtf64(2. / x_max as f64)],
-        y_scales: &mut [1. / sqrtf64(y_max as f64), sqrtf64(2. / y_max as f64)]
+        x_scales: &mut [1. / (x_max as f64).sqrt(), (2. / x_max as f64).sqrt()],
+        y_scales: &mut [1. / (y_max as f64).sqrt(), (2. / y_max as f64).sqrt()],
     };
     let mut dct_matrix: Matrix = Vec::new();
     for x in 0..x_max {
@@ -108,16 +107,13 @@ fn reduce_matrix(dct_matrix: Matrix, size: i64) -> Matrix {
 }
 
 fn calculate_mean_value(dct_matrix: &Matrix) -> f64 {
-    let mut total = 0.;
-    let x_size = dct_matrix.len();
-    let y_size = dct_matrix[0].len();
-    for x in 0..x_size {
-        for y in 0..y_size {
-            total += dct_matrix[x][y];
+    let mut avg = 0.;
+    let n = dct_matrix.len();
+    for x in 0..n {
+        for y in (x+1)..n {
+            avg += dct_matrix[x][y] / (n * n) as f64;
         }
     }
-    total -= dct_matrix[0][0];
-    let avg = total / ((x_size * y_size) - 1) as f64;
     avg
 }
 

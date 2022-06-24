@@ -1,5 +1,3 @@
-#![feature(core_intrinsics)]
-
 use std::ffi::OsStr;
 use std::fmt::{Debug};
 use std::fs;
@@ -35,10 +33,10 @@ fn check(dir: &str) {
     if files.len() < 2 {
         println!("{}: no duplicates find", dir);
     }
-    let pics: Vec<Pic> = files.into_iter().map(|f| unsafe {
+    let pics: Vec<Pic> = files.into_iter().map(|f| {
         let name = f.path().file_name().unwrap().to_string_lossy().chars().as_str().to_string();
         let hash = find_hash(name.clone());
-        let size = 0; // get_size(f.path().file_name().unwrap());
+        let size = 0; // find_size(f.path().file_name().unwrap());
         Pic {name: format!("{}, {}", name, size), hash }
     }).collect();
     println!("{:?}", pics);
