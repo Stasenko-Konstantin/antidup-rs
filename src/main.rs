@@ -1,11 +1,14 @@
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::{Debug};
 use std::fs;
-use crate::phash::find_hash;
+use std::ops::Add;
+use std::process::exit;
+use crate::phash::{find_distance, find_hash};
 
 mod phash;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Pic {
     name: String,
     hash: String,
@@ -41,13 +44,52 @@ fn check(dir: &str) {
         formats.contains(&(f.as_ref().unwrap().path().extension().unwrap())))
         .map(|f| f.unwrap()).collect();
     if files.len() < 2 {
-        println!("{}: no duplicates find", dir);
+        println!("{}: no duplicates found", dir);
+        exit(0);
     }
-    let pics: Vec<Pic> = files.into_iter().map(|f| {
+    let mut pics: Vec<Pic> = files.into_iter().map(|f| {
         let name = f.path().file_name().unwrap().to_string_lossy().chars().as_str().to_string();
         let hash = find_hash(name.clone());
         let size = 0; // find_size(f.path().file_name().unwrap());
         Pic {name: format!("{}, {}", name, size), hash }
     }).collect();
-    println!("{:?}", pics);
+    let result = find_duplicates(pics);
+    if result == "" {
+        println!("{}: no duplicates found", dir);
+    } else {
+        println!("{}:\n{}", dir, result[..result.len()-1].to_string());
+    }
+}
+
+fn find_duplicates(pics: Vec<Pic>) -> String {
+    let mut result = String::new();
+    let mut dups: Vec<HashMap<String, String>> = Vec::new();
+    let mut n = 0;
+    println!("calcution...");
+    for p in pics.clone() {
+        let mut s = Vec::new();
+        if pics.len() == 1 {
+            s = pics[n..].to_vec();
+        } else {
+            s = pics[n+1..].to_vec();
+        }
+        for comp in s {
+            let p = p.clone();
+            let mut dup = HashMap::new();
+            let distance = find_distance(&p.hash.chars(), &comp.hash.chars());
+            if distance < 3 {
+                dup.insert(p.name, comp.name);
+            }
+            if dup.len() > 0 {
+                dups.push(dup.clone());
+            }
+        }
+        n += 1;
+    }
+    for dup in dups {
+        for (k, v) in dup {
+            result = result.add(format!("\t{} -- {}\n", k, v).as_str());
+        }
+    }
+    result
 }

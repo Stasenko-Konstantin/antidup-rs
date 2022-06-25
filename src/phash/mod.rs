@@ -40,8 +40,8 @@ impl DctPoint<'_> {
     }
 }
 
-pub fn find_distance(hash1: Chars, hash2: Chars) -> i32 {
-    hash1.zip(hash2).fold(0,
+pub fn find_distance(hash1: &Chars, hash2: &Chars) -> i32 {
+    hash1.clone().zip(hash2.clone()).fold(0,
                           |acc, x|
                               if x.0 != x.1
                               { acc + 1 } else { acc },
