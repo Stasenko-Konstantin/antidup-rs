@@ -47,7 +47,7 @@ fn check(dir: &str) {
         println!("{}: no duplicates found", dir);
         exit(0);
     }
-    let mut pics: Vec<Pic> = files.into_iter().map(|f| {
+    let pics: Vec<Pic> = files.into_iter().map(|f| {
         let name = f.path().file_name().unwrap().to_string_lossy().chars().as_str().to_string();
         let hash = find_hash(name.clone());
         let size = 0; // find_size(f.path().file_name().unwrap());
@@ -64,27 +64,27 @@ fn check(dir: &str) {
 fn find_duplicates(pics: Vec<Pic>) -> String {
     let mut result = String::new();
     let mut dups: Vec<HashMap<String, String>> = Vec::new();
-    let mut n = 0;
+    let mut i = 0;
     println!("calcution...");
     for p in pics.clone() {
-        let mut s = Vec::new();
+        let s: Vec<Pic>;
         if pics.len() == 1 {
-            s = pics[n..].to_vec();
+            s = pics[i..].to_vec();
         } else {
-            s = pics[n+1..].to_vec();
+            s = pics[i +1..].to_vec();
         }
         for comp in s {
             let p = p.clone();
             let mut dup = HashMap::new();
             let distance = find_distance(&p.hash.chars(), &comp.hash.chars());
-            if distance < 3 {
+            if distance < 1 {
                 dup.insert(p.name, comp.name);
             }
             if dup.len() > 0 {
                 dups.push(dup.clone());
             }
         }
-        n += 1;
+        i += 1;
     }
     for dup in dups {
         for (k, v) in dup {

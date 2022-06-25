@@ -50,7 +50,7 @@ pub fn find_distance(hash1: &Chars, hash2: &Chars) -> i32 {
 
 pub fn find_hash(img: String) -> String {
     let size = 32;
-    let mut img = image::open(img).unwrap()
+    let img = image::open(img).unwrap()
         .resize_to_fill(size, size, image::imageops::Lanczos3)
         .grayscale();
     let image_matrix = find_image_matrix(img);
