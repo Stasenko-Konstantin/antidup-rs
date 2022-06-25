@@ -19,8 +19,8 @@ impl DctPoint<'_> {
         for i in 0..self.x_max {
             for j in 0..self.y_max {
                 let image_value = image_data[i as usize][j as usize];
-                let fst_cosine = (((1 + (2 * i)) * x) as f64).cos() * PI / (2. * self.x_max as f64);
-                let snd_cosine = (((1 + (2 * j)) * x) as f64).cos() * PI / (2. * self.y_max as f64);
+                let fst_cosine = ((((1 + (2 * i)) * x) as f64) * PI / (2. * self.x_max as f64)).cos();
+                let snd_cosine = ((((1 + (2 * j)) * y) as f64) * PI / (2. * self.y_max as f64)).cos();
                 sum += image_value * fst_cosine * snd_cosine;
             }
         }
@@ -55,9 +55,9 @@ pub fn find_hash(img: String) -> String {
         .grayscale();
     let image_matrix = find_image_matrix(img);
     let small_matrix = reduce_matrix(image_matrix, 8);
-    let dct_matrix = find_dct_matrix(small_matrix); // !!!
+    let dct_matrix = find_dct_matrix(small_matrix);
     let dct_mean_value = calculate_mean_value(&dct_matrix);
-    build_hash(dct_matrix, dct_mean_value) // !!!
+    build_hash(dct_matrix, dct_mean_value)
 }
 
 fn find_image_matrix(img: DynamicImage) -> Matrix {
@@ -73,7 +73,7 @@ fn find_image_matrix(img: DynamicImage) -> Matrix {
 }
 
 fn find_xy_value(img: DynamicImage, x: u32, y: u32) -> f64 {
-    img.get_pixel(x, y).to_rgba().0[2] as f64
+    img.get_pixel(x, y).to_bgr().0[0] as f64
 }
 
 fn find_dct_matrix(matrix: Matrix) -> Matrix {

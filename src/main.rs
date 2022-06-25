@@ -11,6 +11,16 @@ struct Pic {
     hash: String,
 }
 
+impl PartialEq for Pic {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+}
+
 fn main() {
     let path: &str;
     let args: Vec<String> = std::env::args().collect();
