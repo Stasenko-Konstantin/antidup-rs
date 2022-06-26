@@ -6,7 +6,7 @@ based on [phash algoritm](https://www.phash.org/docs/pubs/thesis_zauner.pdf)
 
 ## TODO
 - [x] Loading ~~animation~~ message
-- [ ] Display of image size in mb/kb/etc
+- [x] Display of image size in mb/kb/etc
 - [ ] Recursive analysis of subdirectories
 - [ ] Analysis of the selected directory
 - [ ] Cache

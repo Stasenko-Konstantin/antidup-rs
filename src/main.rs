@@ -47,10 +47,11 @@ fn check(dir: &str) {
         println!("{}: no duplicates found", dir);
         exit(0);
     }
+    println!("calculation...");
     let pics: Vec<Pic> = files.into_iter().map(|f| {
         let name = f.path().file_name().unwrap().to_string_lossy().chars().as_str().to_string();
         let hash = find_hash(name.clone());
-        let size = 0; // find_size(f.path().file_name().unwrap());
+        let size = find_size(f.metadata().unwrap().len());
         Pic {name: format!("{}, {}", name, size), hash }
     }).collect();
     let result = find_duplicates(pics);
@@ -61,11 +62,20 @@ fn check(dir: &str) {
     }
 }
 
+fn find_size(size: u64) -> String {
+    match size {
+        _ if size < 1024 => format!("{:.2}b", size),
+        _ if size < 1048576 => format!("{:.2}kb", size/1024),
+        _ if size < 1073741824 => format!("{:.2}mb", size/1024/1024),
+        _ if size < 1099511627776 => format!("{:.2}gb", size/1024/1024/1024),
+        _  => format!("{}b", size)
+    }
+}
+
 fn find_duplicates(pics: Vec<Pic>) -> String {
     let mut result = String::new();
     let mut dups: Vec<HashMap<String, String>> = Vec::new();
     let mut i = 0;
-    println!("calcution...");
     for p in pics.clone() {
         let s: Vec<Pic>;
         if pics.len() == 1 {
