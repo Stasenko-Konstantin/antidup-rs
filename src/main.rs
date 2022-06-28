@@ -87,7 +87,7 @@ fn find_duplicates(pics: Vec<Pic>) -> String {
             let p = p.clone();
             let mut dup = HashMap::new();
             let distance = find_distance(&p.hash.chars(), &comp.hash.chars());
-            if distance < 1 {
+            if distance == 0 {
                 dup.insert(p.name, comp.name);
             }
             if dup.len() > 0 {

@@ -49,15 +49,15 @@ pub fn find_distance(hash1: &Chars, hash2: &Chars) -> i32 {
 }
 
 pub fn find_hash(img: String) -> String {
-    let size = 32;
+    let size = 50;
     let img = image::open(img).unwrap()
         .resize_to_fill(size, size, image::imageops::Lanczos3)
         .grayscale();
     let image_matrix = find_image_matrix(img);
-    let small_matrix = reduce_matrix(image_matrix, 8);
-    let dct_matrix = find_dct_matrix(small_matrix);
-    let dct_mean_value = calculate_mean_value(&dct_matrix);
-    build_hash(dct_matrix, dct_mean_value)
+    let dct_matrix = find_dct_matrix(image_matrix);
+    let small_matrix = reduce_matrix(dct_matrix, 10);
+    let dct_mean_value = calculate_mean_value(&small_matrix);
+    build_hash(small_matrix, dct_mean_value)
 }
 
 fn find_image_matrix(img: DynamicImage) -> Matrix {
