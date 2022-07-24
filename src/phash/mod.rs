@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 use std::f64::consts::PI;
 use std::ops::Add;
+use std::panic;
 use std::str::Chars;
 use image::{DynamicImage, GenericImageView, Pixel};
 
@@ -48,16 +49,21 @@ pub fn find_distance(hash1: &Chars, hash2: &Chars) -> i32 {
     )
 }
 
-pub fn find_hash(img: String) -> String {
+pub fn find_hash(img: String) -> Option<String> {
     let size = 50;
-    let img = image::open(img).unwrap()
-        .resize_to_fill(size, size, image::imageops::Lanczos3)
-        .grayscale();
+    let img = match panic::catch_unwind(|| {
+        image::open(img).unwrap()
+            .resize_to_fill(size, size, image::imageops::Lanczos3)
+            .grayscale()
+    }) {
+        Ok(img) => img,
+        Err(_) => return None
+    };
     let image_matrix = find_image_matrix(img);
     let dct_matrix = find_dct_matrix(image_matrix);
     let small_matrix = reduce_matrix(dct_matrix, 10);
     let dct_mean_value = calculate_mean_value(&small_matrix);
-    build_hash(small_matrix, dct_mean_value)
+    Some(build_hash(small_matrix, dct_mean_value))
 }
 
 fn find_image_matrix(img: DynamicImage) -> Matrix {

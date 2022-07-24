@@ -1,6 +1,6 @@
 # antidup-rs (blazingly fast 🚀)
 to find duplicates of photos (.png, .jpg and .jpeg)                                
-based on [phash algoritm](https://www.phash.org/docs/pubs/thesis_zauner.pdf)
+based on [phash algorithm](https://www.phash.org/docs/pubs/thesis_zauner.pdf)
 
 ![](example.png)
 
