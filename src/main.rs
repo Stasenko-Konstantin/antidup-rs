@@ -64,7 +64,7 @@ fn check(dir: &str, cmds: HashMap<&str, bool>) {
     println!("calculation...");
     let pics: Vec<Option<Pic>> = files.into_iter().map(|f| {
         let name = f.path().file_name().unwrap().to_string_lossy().chars().as_str().to_string();
-        if !cmds.get("quiet").unwrap() {
+        if !cmds["quiet"] {
             println!("{}", name);
         }
         let hash = find_hash(name.clone())?;
