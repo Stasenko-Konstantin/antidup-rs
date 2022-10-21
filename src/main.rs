@@ -1,19 +1,22 @@
 #![feature(unwrap_infallible)]
 
+extern crate core;
+
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::{Debug};
 use std::fs;
-use std::ops::Add;
+use std::fs::remove_file;
 use std::process::exit;
 use crate::phash::{find_distance, find_hash};
 
 mod phash;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash)]
 struct Pic {
     name: String,
     hash: String,
+    size: u64,
 }
 
 impl PartialEq for Pic {
@@ -26,27 +29,58 @@ impl PartialEq for Pic {
     }
 }
 
+impl Pic {
+    fn find_size(self: Self) -> String {
+        let size = self.size;
+        match size {
+            _ if size < 1024 => format!("{:.2}b", size),
+            _ if size < 1048576 => format!("{:.2}kb", size / 1024),
+            _ if size < 1073741824 => format!("{:.2}mb", size / 1024 / 1024),
+            _ if size < 1099511627776 => format!("{:.2}gb", size / 1024 / 1024 / 1024),
+            _ => format!("{}b", size)
+        }
+    }
+}
+
 fn main() {
     let path: &str;
     let args: Vec<String> = std::env::args().collect();
     if args.contains(&"--help".to_string()) {
         println!("{}", "usage:\n\
         \t--help  \t-- prints the help\n\
-        \t--quiet \t-- prints duplicates only");
+        \t--quiet \t-- prints duplicates only\n\
+        \t--rm    \t-- delete smallest duplicate");
         exit(0)
     }
     if args.len() == 2 {
-        path = args[1].as_str();
+        path = check_path(args[1].as_str());
     } else {
         path = "./";
     }
-    let mut cmds = HashMap::new();
-    if args.contains(&"--quiet".to_string()) {
-        cmds.insert("quiet", true);
-    } else {
-        cmds.insert("quiet", false);
-    }
+    let cmds = parse_args(args.clone());
     check(path, cmds);
+}
+
+fn check_path(path: &str) -> &str {
+    if &path[0..2] == "--" {
+        return "./";
+    }
+    return path
+}
+
+fn parse_args(args: Vec<String>) -> HashMap<&'static str, bool> {
+    let mut cmds = HashMap::new();
+    for arg in args {
+        match arg.as_str() {
+            "--quiet" => cmds.insert("quiet", true),
+            "--rm" => cmds.insert("rm", true),
+            _ => {
+                cmds.insert("quiet", false);
+                cmds.insert("rm", false)
+            }
+        };
+    }
+    return cmds
 }
 
 fn check(dir: &str, cmds: HashMap<&str, bool>) {
@@ -68,30 +102,37 @@ fn check(dir: &str, cmds: HashMap<&str, bool>) {
             println!("{}", name);
         }
         let hash = find_hash(name.clone())?;
-        let size = find_size(f.metadata().unwrap().len());
-        Some(Pic {name: format!("{}, {}", name, size), hash })
+        let size= f.metadata().unwrap().len();
+        Some(Pic {name, hash, size })
     }).collect();
     let result = find_duplicates(pics);
-    if result == "" {
+    if result.len() == 0 {
         println!("{}: no duplicates found", dir);
     } else {
-        println!("{}:\n{}", dir, result[..result.len()-1].to_string());
+        let mut s = "".to_string();
+        for (k, v) in result {
+            if cmds["rm"] {
+                del(k.clone(), v.clone());
+            }
+            s += format!("\t{}, {} -- {}, {}\n", k.name.clone(), k.find_size(), v.name.clone(), v.find_size()).as_str()
+        }
+        println!("{}:\n{}", dir, &s[..s.len()-1]);
     }
 }
 
-fn find_size(size: u64) -> String {
-    match size {
-        _ if size < 1024 => format!("{:.2}b", size),
-        _ if size < 1048576 => format!("{:.2}kb", size/1024),
-        _ if size < 1073741824 => format!("{:.2}mb", size/1024/1024),
-        _ if size < 1099511627776 => format!("{:.2}gb", size/1024/1024/1024),
-        _  => format!("{}b", size)
+fn del(k: Pic, v: Pic) {
+    let d: Pic;
+    if k.size < v.size {
+        d = k;
+    } else {
+        d = v;
     }
+    remove_file(d.name.clone()).expect(format!("cant delete {}", d.name).as_str());
 }
 
-fn find_duplicates(pics: Vec<Option<Pic>>) -> String {
-    let mut result = String::new();
-    let mut dups: Vec<HashMap<String, String>> = Vec::new();
+fn find_duplicates(pics: Vec<Option<Pic>>) -> Vec<(Pic, Pic)> {
+    let mut result: Vec<(Pic, Pic)> = Vec::new();
+    let mut dups: Vec<HashMap<Pic, Pic>> = Vec::new();
     let mut i = 0;
     for p in pics.clone() {
         let p = if p.is_some() { p.unwrap() } else { continue };
@@ -107,7 +148,7 @@ fn find_duplicates(pics: Vec<Option<Pic>>) -> String {
             let mut dup = HashMap::new();
             let distance = find_distance(&p.hash.chars(), &comp.hash.chars());
             if distance < 3 {
-                dup.insert(p.name, comp.name);
+                dup.insert(p, comp);
             }
             if dup.len() > 0 {
                 dups.push(dup.clone());
@@ -117,7 +158,7 @@ fn find_duplicates(pics: Vec<Option<Pic>>) -> String {
     }
     for dup in dups {
         for (k, v) in dup {
-            result = result.add(format!("\t{} -- {}\n", k, v).as_str());
+            result.push((k, v));
         }
     }
     result

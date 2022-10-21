@@ -8,3 +8,4 @@ based on [phash algorithm](https://www.phash.org/docs/pubs/thesis_zauner.pdf)
 - [x] Loading ~~animation~~ message
 - [x] Display of image size in mb/kb/etc
 - [x] Analysis of the selected directory
+- [x] Delete duplicates
