@@ -1,14 +1,13 @@
 #![feature(unwrap_infallible)]
 
-extern crate core;
-
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::{Debug};
-use std::fs;
-use std::fs::remove_file;
+use std::fs::{self, remove_file};
+use std::path::PathBuf;
 use std::process::exit;
-use crate::phash::{find_distance, find_hash};
+use clap::Parser;
+use crate::phash::*;
 
 mod phash;
 
@@ -23,14 +22,10 @@ impl PartialEq for Pic {
     fn eq(&self, other: &Self) -> bool {
         self.hash == other.hash
     }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
 }
 
 impl Pic {
-    fn find_size(self: Self) -> String {
+    fn find_size(self) -> String {
         let size = self.size;
         match size {
             _ if size < 1024 => format!("{:.2}b", size),
@@ -42,63 +37,45 @@ impl Pic {
     }
 }
 
+#[derive(Parser)]
+#[command(version, about)]
+struct Args {
+    #[arg(short, long)]
+    quiet: bool,
+    
+    #[arg(short, long)]
+    rm: bool,
+    
+    #[arg(short, long)]
+    path: Option<PathBuf>,
+}
+
 fn main() {
-    let path: &str;
-    let args: Vec<String> = std::env::args().collect();
-    if args.contains(&"--help".to_string()) {
-        println!("{}", "usage:\n\
-        \t--help  \t-- prints the help\n\
-        \t--quiet \t-- prints duplicates only\n\
-        \t--rm    \t-- delete smallest duplicate");
-        exit(0)
-    }
-    if args.len() == 2 {
-        path = check_path(args[1].as_str());
+    let args = Args::parse();
+    let path = if args.path.is_some() {
+        args.path.clone().unwrap()
     } else {
-        path = "./";
-    }
-    let cmds = parse_args(args.clone());
-    check(path, cmds);
+        PathBuf::from("./")
+    };
+    check(path, args);
 }
 
-fn check_path(path: &str) -> &str {
-    if &path[0..2] == "--" {
-        return "./";
-    }
-    return path
-}
-
-fn parse_args(args: Vec<String>) -> HashMap<&'static str, bool> {
-    let mut cmds = HashMap::new();
-    for arg in args {
-        match arg.as_str() {
-            "--quiet" => cmds.insert("quiet", true),
-            "--rm" => cmds.insert("rm", true),
-            _ => {
-                cmds.insert("quiet", false);
-                cmds.insert("rm", false)
-            }
-        };
-    }
-    return cmds
-}
-
-fn check(dir: &str, cmds: HashMap<&str, bool>) {
-    let formats: Vec<&OsStr> = vec!("png".as_ref() as &OsStr,
-                                      "jpg".as_ref() as &OsStr,
-                                      "jpeg".as_ref() as &OsStr);
-    let files: Vec<fs::DirEntry> = std::path::Path::new(dir).read_dir().unwrap()
+fn check(dir: PathBuf, args: Args) {
+    let formats: Vec<&OsStr> = vec!("png".as_ref(),
+                                      "jpg".as_ref(),
+                                      "jpeg".as_ref());
+    let files: Vec<fs::DirEntry> = dir.read_dir().unwrap()
         .filter(|f| f.as_ref().unwrap().path().extension().is_some()).filter(|f|
         formats.contains(&(f.as_ref().unwrap().path().extension().unwrap())))
         .map(|f| f.unwrap()).collect();
     if files.len() < 2 {
-        println!("{}: no duplicates found", dir);
+        println!("{:?}: no duplicates found", dir);
         exit(0);
     }
     println!("calculation...");
     let pics: Vec<Option<Pic>> = files.into_iter().map(|f| {
         let name = f.path().file_name().unwrap().to_string_lossy().chars().as_str().to_string();
-        if !cmds["quiet"] {
+        if !args.quiet {
             println!("{}", name);
         }
         let hash = find_hash(name.clone())?;
@@ -106,28 +83,28 @@ fn check(dir: &str, cmds: HashMap<&str, bool>) {
         Some(Pic {name, hash, size })
     }).collect();
     let result = find_duplicates(pics);
-    if result.len() == 0 {
-        println!("{}: no duplicates found", dir);
+    if result.is_empty() {
+        println!("{:?}: no duplicates found", dir);
     } else {
         let mut s = "".to_string();
         for (k, v) in result {
-            if cmds["rm"] {
+            if args.rm {
                 del(k.clone(), v.clone());
             }
             s += format!("\t{}, {} -- {}, {}\n", k.name.clone(), k.find_size(), v.name.clone(), v.find_size()).as_str()
         }
-        println!("{}:\n{}", dir, &s[..s.len()-1]);
+        println!("{:?}:\n{}", dir, &s[..s.len()-1]);
     }
 }
 
 fn del(k: Pic, v: Pic) {
-    let d: Pic;
+    let d =
     if k.size < v.size {
-        d = k;
+        k
     } else {
-        d = v;
-    }
-    remove_file(d.name.clone()).expect(format!("cant delete {}", d.name).as_str());
+        v
+    };
+    remove_file(d.name.clone()).unwrap_or_else(|_| panic!("cant delete {}", d.name));
 }
 
 fn find_duplicates(pics: Vec<Option<Pic>>) -> Vec<(Pic, Pic)> {
@@ -136,12 +113,11 @@ fn find_duplicates(pics: Vec<Option<Pic>>) -> Vec<(Pic, Pic)> {
     let mut i = 0;
     for p in pics.clone() {
         let p = if p.is_some() { p.unwrap() } else { continue };
-        let s: Vec<Option<Pic>>;
-        if pics.len() == 1 {
-            s = pics[i..].to_vec();
+        let s = if pics.len() == 1 {
+            pics[i..].to_vec()
         } else {
-            s = pics[i +1..].to_vec();
-        }
+            pics[i +1..].to_vec()
+        };
         for comp in s {
             let comp = if comp.is_some() { comp.unwrap() } else { continue };
             let p = p.clone();
@@ -150,7 +126,7 @@ fn find_duplicates(pics: Vec<Option<Pic>>) -> Vec<(Pic, Pic)> {
             if distance < 3 {
                 dup.insert(p, comp);
             }
-            if dup.len() > 0 {
+            if !dup.is_empty() {
                 dups.push(dup.clone());
             }
         }

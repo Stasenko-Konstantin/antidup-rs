@@ -15,7 +15,7 @@ struct DctPoint<'a> {
 }
 
 impl DctPoint<'_> {
-    fn calculate(self: &Self, image_data: &Matrix, x: i64, y: i64) -> f64 {
+    fn calculate(&self, image_data: &Matrix, x: i64, y: i64) -> f64 {
         let mut sum = 0.;
         for i in 0..self.x_max {
             for j in 0..self.y_max {
@@ -28,7 +28,7 @@ impl DctPoint<'_> {
         sum * self.find_scale_factor(x, y)
     }
 
-    fn find_scale_factor(self: &Self, x: i64, y: i64) -> f64 {
+    fn find_scale_factor(&self, x: i64, y: i64) -> f64 {
         let mut x_scale_factor = self.x_scales[1];
         if x == 0 {
             x_scale_factor = self.x_scales[0];
@@ -144,7 +144,7 @@ mod phash_tests {
     #[test]
     fn find_distance_test() {
         use super::*;
-        assert_eq!(find_distance("1101".chars(), "1011".chars()), 2);
-        assert_eq!(find_distance("1111".chars(), "1111".chars()), 0);
+        assert_eq!(find_distance(&"1101".chars(), &"1011".chars()), 2);
+        assert_eq!(find_distance(&"1111".chars(), &"1111".chars()), 0);
     }
 }
