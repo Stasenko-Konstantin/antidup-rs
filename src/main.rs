@@ -26,12 +26,13 @@ impl PartialEq for Pic {
 
 impl Pic {
     fn find_size(self) -> String {
+        const KB: u64 = 1024;
         let size = self.size;
         match size {
-            _ if size < 1024 => format!("{:.2}b", size),
-            _ if size < 1048576 => format!("{:.2}kb", size / 1024),
-            _ if size < 1073741824 => format!("{:.2}mb", size / 1024 / 1024),
-            _ if size < 1099511627776 => format!("{:.2}gb", size / 1024 / 1024 / 1024),
+            _ if size < KB => format!("{:.2}b", size),
+            _ if size < u64::pow(KB, 2) => format!("{:.2}kb", size / 1024),
+            _ if size < u64::pow(KB, 3) => format!("{:.2}mb", size / 1024 / 1024),
+            _ if size < u64::pow(KB, 4) => format!("{:.2}gb", size / 1024 / 1024 / 1024),
             _ => format!("{}b", size)
         }
     }
@@ -52,36 +53,37 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let path = if args.path.is_some() {
+    check(if args.path.is_some() {
         args.path.clone().unwrap()
     } else {
         PathBuf::from("./")
-    };
-    check(path, args);
+    }, args);
 }
 
 fn check(dir: PathBuf, args: Args) {
-    let formats: Vec<&OsStr> = vec!("png".as_ref(),
-                                      "jpg".as_ref(),
-                                      "jpeg".as_ref());
-    let files: Vec<fs::DirEntry> = dir.read_dir().unwrap()
-        .filter(|f| f.as_ref().unwrap().path().extension().is_some()).filter(|f|
-        formats.contains(&(f.as_ref().unwrap().path().extension().unwrap())))
-        .map(|f| f.unwrap()).collect();
+    let formats: Vec<&OsStr> = vec!("png".as_ref(), "jpg".as_ref(), "jpeg".as_ref());
+    let files: Vec<fs::DirEntry> = 
+        dir.read_dir().unwrap_or_else(|_| panic!("cant read path: {}", dir.display())).
+            filter(|f| 
+                f.as_ref().unwrap().path().extension().is_some() &&
+                formats.contains(&(f.as_ref().unwrap().path().extension().unwrap()))).
+            map(|f| f.unwrap()).collect();
     if files.len() < 2 {
         println!("{:?}: no duplicates found", dir);
         exit(0);
     }
+    
     println!("calculation...");
     let pics: Vec<Option<Pic>> = files.into_iter().map(|f| {
-        let name = f.path().file_name().unwrap().to_string_lossy().chars().as_str().to_string();
+        let name = f.path().file_name()?.to_string_lossy().chars().as_str().to_string();
         if !args.quiet {
             println!("{}", name);
         }
         let hash = find_hash(name.clone())?;
         let size= f.metadata().unwrap().len();
-        Some(Pic {name, hash, size })
+        Some(Pic {name, hash, size})
     }).collect();
+    
     let result = find_duplicates(pics);
     if result.is_empty() {
         println!("{:?}: no duplicates found", dir);
@@ -89,22 +91,15 @@ fn check(dir: PathBuf, args: Args) {
         let mut s = "".to_string();
         for (k, v) in result {
             if args.rm {
-                del(k.clone(), v.clone());
+                let d = if k.size < v.size { k.clone() } else { v.clone() };
+                remove_file(d.name.clone()).unwrap_or_else(|_| panic!("cant delete {}", d.name));
             }
-            s += format!("\t{}, {} -- {}, {}\n", k.name.clone(), k.find_size(), v.name.clone(), v.find_size()).as_str()
+            s += format!("\t{}, {} -- {}, {}\n", 
+                         k.name.clone(), k.find_size(), 
+                         v.name.clone(), v.find_size()).as_str()
         }
         println!("{:?}:\n{}", dir, &s[..s.len()-1]);
     }
-}
-
-fn del(k: Pic, v: Pic) {
-    let d =
-    if k.size < v.size {
-        k
-    } else {
-        v
-    };
-    remove_file(d.name.clone()).unwrap_or_else(|_| panic!("cant delete {}", d.name));
 }
 
 fn find_duplicates(pics: Vec<Option<Pic>>) -> Vec<(Pic, Pic)> {
@@ -116,14 +111,14 @@ fn find_duplicates(pics: Vec<Option<Pic>>) -> Vec<(Pic, Pic)> {
         let s = if pics.len() == 1 {
             pics[i..].to_vec()
         } else {
-            pics[i +1..].to_vec()
+            pics[i+1..].to_vec()
         };
         for comp in s {
             let comp = if comp.is_some() { comp.unwrap() } else { continue };
             let p = p.clone();
             let mut dup = HashMap::new();
             let distance = find_distance(&p.hash.chars(), &comp.hash.chars());
-            if distance < 3 {
+            if distance < MIN_DISTANCE {
                 dup.insert(p, comp);
             }
             if !dup.is_empty() {

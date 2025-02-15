@@ -5,6 +5,9 @@ use std::panic;
 use std::str::Chars;
 use image::{DynamicImage, GenericImageView, Pixel};
 
+// MIN_DISTANCE - threshold of duplicates distance
+pub const MIN_DISTANCE: i32 = 3;
+
 type Matrix = Vec<Vec<f64>>;
 
 struct DctPoint<'a> {

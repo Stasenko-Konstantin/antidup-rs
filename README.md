@@ -6,7 +6,7 @@ based on [phash algorithm](https://www.phash.org/docs/pubs/thesis_zauner.pdf)
 
 ### todo
 - [x] loading ~~animation~~ message
-- [x] display of image size in mb/kb/etc
+- [x] display of image size in mb/KB/etc
 - [x] analysis of the selected directory
 - [x] delete duplicates
 - [ ] fix image reading
