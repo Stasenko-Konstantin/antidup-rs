@@ -38,14 +38,28 @@ impl Pic {
     }
 }
 
+#[derive(clap::ValueEnum, Clone, Default, Debug)]
+enum Recursive {
+    #[default]
+    Non,
+    Segmented,
+    Flat
+}
+
 #[derive(Parser)]
 #[command(version, about)]
 struct Args {
     #[arg(short, long)]
     quiet: bool,
     
-    #[arg(short, long)]
+    #[arg(long)]
     rm: bool,
+    
+    #[arg(short, long, default_value_t, value_enum)]
+    recursive: Recursive,
+    
+    #[arg(short, long)]
+    deep: u32,
     
     #[arg(short, long)]
     path: Option<PathBuf>,
@@ -60,18 +74,22 @@ fn main() {
     }, args);
 }
 
-fn check(dir: PathBuf, args: Args) {
+fn mk_file_index(dir: PathBuf, rec: Recursive) {
     let formats: Vec<&OsStr> = vec!("png".as_ref(), "jpg".as_ref(), "jpeg".as_ref());
-    let files: Vec<fs::DirEntry> = 
+    let files: Vec<fs::DirEntry> =
         dir.read_dir().unwrap_or_else(|_| panic!("cant read path: {}", dir.display())).
-            filter(|f| 
+            filter(|f|
                 f.as_ref().unwrap().path().extension().is_some() &&
-                formats.contains(&(f.as_ref().unwrap().path().extension().unwrap()))).
+                    formats.contains(&(f.as_ref().unwrap().path().extension().unwrap()))).
             map(|f| f.unwrap()).collect();
     if files.len() < 2 {
         println!("{:?}: no duplicates found", dir);
         exit(0);
     }
+}
+
+fn check(dir: PathBuf, args: Args) {
+    let files = mk_file_index(dir, args.recursive);
     
     println!("calculation...");
     let pics: Vec<Option<Pic>> = files.into_iter().map(|f| {
