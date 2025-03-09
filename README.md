@@ -10,6 +10,7 @@ based on [phash algorithm](https://www.phash.org/docs/pubs/thesis_zauner.pdf)
 - [x] analysis of the selected directory
 - [x] delete duplicates
 - [ ] fix image reading
+- [ ] fix help message (antidup-rs -> antidup)
 
 ### get
 

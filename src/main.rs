@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
-use std::fs::{DirEntry, remove_file};
+use std::fs::{remove_file, DirEntry};
 use std::path::PathBuf;
 use std::process::exit;
 

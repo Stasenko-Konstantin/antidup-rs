@@ -1,9 +1,9 @@
 #[allow(dead_code)]
+use image::{DynamicImage, GenericImageView, Pixel};
 use std::f64::consts::PI;
 use std::ops::Add;
 use std::panic;
 use std::str::Chars;
-use image::{DynamicImage, GenericImageView, Pixel};
 
 // MIN_DISTANCE - threshold of duplicates distance
 pub const MIN_DISTANCE: i32 = 3;
@@ -23,8 +23,10 @@ impl DctPoint<'_> {
         for i in 0..self.x_max {
             for j in 0..self.y_max {
                 let image_value = image_data[i as usize][j as usize];
-                let fst_cosine = ((((1 + (2 * i)) * x) as f64) * PI / (2. * self.x_max as f64)).cos();
-                let snd_cosine = ((((1 + (2 * j)) * y) as f64) * PI / (2. * self.y_max as f64)).cos();
+                let fst_cosine =
+                    ((((1 + (2 * i)) * x) as f64) * PI / (2. * self.x_max as f64)).cos();
+                let snd_cosine =
+                    ((((1 + (2 * j)) * y) as f64) * PI / (2. * self.y_max as f64)).cos();
                 sum += image_value * fst_cosine * snd_cosine;
             }
         }
@@ -45,22 +47,22 @@ impl DctPoint<'_> {
 }
 
 pub fn find_distance(hash1: &Chars, hash2: &Chars) -> i32 {
-    hash1.clone().zip(hash2.clone()).fold(0,
-                          |acc, x|
-                              if x.0 != x.1
-                              { acc + 1 } else { acc },
-    )
+    hash1
+        .clone()
+        .zip(hash2.clone())
+        .fold(0, |acc, x| if x.0 != x.1 { acc + 1 } else { acc })
 }
 
 pub fn find_hash(img: String) -> Option<String> {
     let size = 50;
     let img = match panic::catch_unwind(|| {
-        image::open(img).unwrap()
+        image::open(img)
+            .unwrap()
             .resize_to_fill(size, size, image::imageops::Lanczos3)
             .grayscale()
     }) {
         Ok(img) => img,
-        Err(_) => return None
+        Err(_) => return None,
     };
     let image_matrix = find_image_matrix(img);
     let dct_matrix = find_dct_matrix(image_matrix);
@@ -119,7 +121,7 @@ fn calculate_mean_value(dct_matrix: &Matrix) -> f64 {
     let mut avg = 0.;
     let n = dct_matrix.len();
     for x in 0..n {
-        for y in (x+1)..n {
+        for y in (x + 1)..n {
             avg += dct_matrix[x][y] / (n * n) as f64;
         }
     }
